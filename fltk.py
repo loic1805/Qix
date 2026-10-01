@@ -115,6 +115,7 @@ class CustomCanvas:
 
         # root Tk object
         self.root = tk.Tk()
+        self.root.title("Qix")
 
         # canvas attached to the root object
         self.canvas = tk.Canvas(
