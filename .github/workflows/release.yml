@@ -1,0 +1,76 @@
+name: Build Qix
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            output: Qix-Linux
+            executable: dist/Qix
+
+          - os: windows-latest
+            output: Qix-Windows.exe
+            executable: dist/Qix.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Récupérer le projet
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer PyInstaller
+        run: python -m pip install pyinstaller
+
+      - name: Construire Qix
+        run: pyinstaller --onefile --windowed --clean --name Qix game.py
+
+      - name: Préparer l'exécutable
+        env:
+          SOURCE: ${{ matrix.executable }}
+          DESTINATION: release/${{ matrix.output }}
+        run: >
+          python -c "from pathlib import Path;
+          import shutil, os;
+          Path('release').mkdir(exist_ok=True);
+          shutil.copy2(os.environ['SOURCE'], os.environ['DESTINATION'])"
+
+      - name: Sauvegarder l'exécutable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: release/${{ matrix.output }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Télécharger les exécutables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: Qix-*
+          path: release
+          merge-multiple: true
+
+      - name: Créer la release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/*
