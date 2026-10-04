@@ -117,9 +117,15 @@ class CustomCanvas:
         self.root = tk.Tk()
         self.root.title("Qix")
 
+        if resizing:
+            width = min(width, int(self.root.winfo_screenwidth() * 0.9))
+            height = min(height, int(self.root.winfo_screenheight() * 0.85))
+            self.width, self.height = width, height
+
         # canvas attached to the root object
         self.canvas = tk.Canvas(
-            self.root, width=width, height=height, highlightthickness=0
+            self.root, width=width, height=height, highlightthickness=0,
+            background="black"
         )
 
         # adding the canvas to the root window and giving it focus

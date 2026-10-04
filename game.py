@@ -5,7 +5,7 @@ from gameboard import GameBoard, WINDOW_HEIGHT, WINDOW_WIDTH
 
 
 def main():
-    cree_fenetre(WINDOW_WIDTH, WINDOW_HEIGHT, frequence=60)
+    cree_fenetre(WINDOW_WIDTH, WINDOW_HEIGHT, frequence=60, redimension=True)
     game = GameBoard()
 
     while True:

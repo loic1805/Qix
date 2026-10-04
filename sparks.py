@@ -1,7 +1,7 @@
 """Gestion des Sparx qui circulent sur les frontières."""
 
 from time import monotonic
-from fltk import cercle, polygone, rectangle
+from affichage import cercle, polygone, rectangle
 
 
 DIRECTIONS = [(0, -1), (1, 0), (0, 1), (-1, 0)]

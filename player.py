@@ -1,7 +1,7 @@
 """Gestion des joueurs de Qix."""
 
 from time import monotonic
-from fltk import cercle, polygone, rectangle
+from affichage import cercle, polygone, rectangle
 
 
 def _draw_avatar(x, y, cell_size, helmet_color, suit_color, visor_color, aura_color=None):

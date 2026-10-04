@@ -5,19 +5,15 @@ from collections import deque
 from time import monotonic
 from fltk import (
     abscisse,
-    cercle,
     donne_ev,
     efface_tout,
-    ligne,
     mise_a_jour,
     ordonnee,
-    polygone,
-    rectangle,
-    texte,
     touche,
     touche_pressee,
     type_ev,
 )
+from affichage import adapte_affichage, cercle, ligne, polygone, position_logique, rectangle, texte
 from player import AIPlayer, Player
 from qix import Qix
 from sparks import Sparx
@@ -175,7 +171,7 @@ class GameBoard:
                 return False
 
             if event_type == "ClicGauche":
-                self._handle_click(abscisse(event), ordonnee(event))
+                self._handle_click(*position_logique(abscisse(event), ordonnee(event)))
                 continue
 
             if event_type != "Touche":
@@ -455,11 +451,11 @@ class GameBoard:
         for row in range(1, ROWS - 1):
             for col in range(1, COLS - 1):
                 cell = (col, row)
-                if cell in self.safe_cells or cell in trail:
+                if cell in self.safe_cells:
                     continue
                 if cell in self.filled_cells or cell in self.ai_filled_cells or cell in self.player2_filled_cells:
                     continue
-                if cell not in reachable:
+                if cell in trail or cell not in reachable:
                     target_cells.add(cell)
                     captured.add(cell)
 
@@ -709,11 +705,11 @@ class GameBoard:
         for row in range(1, ROWS - 1):
             for col in range(1, COLS - 1):
                 cell = (col, row)
-                if cell in self.safe_cells or cell in trail:
+                if cell in self.safe_cells:
                     continue
                 if cell in self.filled_cells or cell in self.ai_filled_cells:
                     continue
-                if cell not in reachable:
+                if cell in trail or cell not in reachable:
                     captured += 1
 
         return captured
@@ -751,22 +747,7 @@ class GameBoard:
             self.ai_player.finish_turn()
             return
 
-        trail = set(self.ai_player.trail)
-        reachable = self._reachable_from_qix(trail)
-        captured = 0
-
-        for row in range(1, ROWS - 1):
-            for col in range(1, COLS - 1):
-                cell = (col, row)
-                if cell in self.safe_cells or cell in trail:
-                    continue
-                if cell in self.filled_cells or cell in self.ai_filled_cells:
-                    continue
-                if cell not in reachable:
-                    self.ai_filled_cells.add(cell)
-                    captured += 1
-
-        self.safe_cells.update(trail)
+        captured = self._capture_cells(self.ai_player.trail, self.ai_filled_cells)
         self.ai_player.finish_turn()
 
         if captured:
@@ -1124,6 +1105,7 @@ class GameBoard:
         return self.captured_percentage() + self.player2_captured_percentage()
 
     def draw(self):
+        adapte_affichage(WINDOW_WIDTH, WINDOW_HEIGHT)
         efface_tout()
 
         if self.screen == "menu":
@@ -1151,24 +1133,24 @@ class GameBoard:
                   remplissage="#11151c", couleur="#11151c")
 
         texte(BOARD_LEFT, 20, "QIX", couleur="white", police=ARCADE_FONT, taille=28)
-        texte(BOARD_LEFT + 120, 23, f"NIVEAU {self.level}", couleur="white", police=ARCADE_FONT, taille=18)
+        texte(BOARD_LEFT + 120, 23, f"NIVEAU {self.level}", couleur="white", police=ARCADE_FONT, taille=18, largeur=170)
 
         if self.mode == "two":
             texte(BOARD_LEFT + 300, 23, f"J1 {self.captured_percentage():.1f}% {self.player.lives}V",
-                  couleur="#20c4cc", police=ARCADE_FONT, taille=16)
+                  couleur="#20c4cc", police=ARCADE_FONT, taille=16, largeur=190)
             texte(BOARD_LEFT + 500, 23, f"J2 {self.player2_captured_percentage():.1f}% {self.player2.lives}V",
-                  couleur="#b45cff", police=ARCADE_FONT, taille=16)
+                  couleur="#b45cff", police=ARCADE_FONT, taille=16, largeur=190)
             texte(BOARD_LEFT + 700, 23, f"MANCHES {self.player1_rounds}-{self.player2_rounds}",
-                  couleur="white", police=ARCADE_FONT, taille=15)
+                  couleur="white", police=ARCADE_FONT, taille=15, largeur=300)
         else:
             texte(BOARD_LEFT + 300, 23, f"VIES {self.player.lives}", couleur="white", police=ARCADE_FONT, taille=18)
             if self.mode == "ai":
                 texte(BOARD_LEFT + 430, 23, f"VOUS {self.captured_percentage():.1f}%", couleur="#20c4cc", police=ARCADE_FONT, taille=16)
                 texte(BOARD_LEFT + 610, 23, f"IA {self.ai_captured_percentage():.1f}% {self.ai_player.lives}V", couleur="#b45cff", police=ARCADE_FONT, taille=16)
-                texte(BOARD_LEFT + 790, 23, f"SCORE {self.score}", couleur="white", police=ARCADE_FONT, taille=15)
+                texte(BOARD_LEFT + 790, 23, f"SCORE {self.score}", couleur="white", police=ARCADE_FONT, taille=15, largeur=210)
             else:
                 texte(BOARD_LEFT + 440, 23, f"ZONE {self.captured_percentage():.1f}%", couleur="white", police=ARCADE_FONT, taille=18)
-                texte(BOARD_LEFT + 635, 23, f"SCORE {self.score}", couleur="white", police=ARCADE_FONT, taille=18)
+                texte(BOARD_LEFT + 635, 23, f"SCORE {self.score}", couleur="white", police=ARCADE_FONT, taille=18, largeur=365)
 
         self._draw_small_button(GAME_INFO_BUTTON, "i", "#ffd166")
         self._draw_small_button(GAME_MENU_BUTTON, "MENU", "#20c4cc")
@@ -1206,14 +1188,9 @@ class GameBoard:
             epaisseur=1,
         )
 
-        for col, row in self.filled_cells:
-            self._draw_filled_cell(col, row, "#20c4cc")
-
-        for col, row in self.ai_filled_cells:
-            self._draw_filled_cell(col, row, "#7b2cbf")
-
-        for col, row in self.player2_filled_cells:
-            self._draw_filled_cell(col, row, "#7b2cbf")
+        self._draw_filled_cells(self.filled_cells, "#20c4cc")
+        self._draw_filled_cells(self.ai_filled_cells, "#7b2cbf")
+        self._draw_filled_cells(self.player2_filled_cells, "#7b2cbf")
 
         self._draw_obstacles()
         self._draw_safe_lines()
@@ -1233,22 +1210,22 @@ class GameBoard:
             self.player2.draw(BOARD_LEFT, BOARD_TOP, CELL_SIZE)
         self.player.draw(BOARD_LEFT, BOARD_TOP, CELL_SIZE)
 
-    def _draw_filled_cell(self, col, row, color):
-        """Dessine une case capturée jusqu'au centre des cases voisines.
-
-        La logique du jeu utilise une grille de cases, alors que la frontière
-        blanche est dessinée au centre des cases sûres. On étend donc le cyan
-        d'une demi-case dans chaque direction pour éviter les carrés noirs aux
-        angles et aux intersections des chemins.
-        """
-        half = CELL_SIZE / 2
-        x1 = BOARD_LEFT + col * CELL_SIZE - half
-        y1 = BOARD_TOP + row * CELL_SIZE - half
-        x2 = BOARD_LEFT + (col + 1) * CELL_SIZE + half
-        y2 = BOARD_TOP + (row + 1) * CELL_SIZE + half
-
-        rectangle(x1, y1, x2, y2,
-                  couleur=color, remplissage=color, epaisseur=1)
+    def _draw_filled_cells(self, cells, color):
+        tiles = {(col + dx, row + dy) for col, row in cells
+                 for dx, dy in ((-1, -1), (0, -1), (-1, 0), (0, 0))}
+        for col, row in tiles:
+            corners = [(col, row), (col + 1, row),
+                       (col + 1, row + 1), (col, row + 1)]
+            points = [cell for cell in corners
+                      if cell in cells or cell in self.safe_cells]
+            if len(points) < 3:
+                continue
+            if len(points) < 4 and not any(
+                cell in cells and cell not in self.safe_cells for cell in corners
+            ):
+                continue
+            polygone([self._cell_center(*cell) for cell in points],
+                     couleur="", remplissage=color)
 
     def _draw_obstacles(self):
         """Dessine des obstacles variés, avec un style spécial pour les versions dangereuses."""
@@ -1354,7 +1331,7 @@ class GameBoard:
         y2 = y1 + 84
         rectangle(x1, y1, x2, y2, couleur="white", remplissage="#11151c", epaisseur=2)
         texte((x1 + x2) / 2, (y1 + y2) / 2, message,
-              couleur="white", police=ARCADE_FONT, ancrage="center", taille=20)
+              couleur="white", police=ARCADE_FONT, ancrage="center", taille=20, largeur=x2 - x1 - 24)
 
     def _draw_menu(self):
         rectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -1412,9 +1389,9 @@ class GameBoard:
         y = 135
         for title, description in rules:
             texte(150, y, title,
-                  couleur="#20c4cc", police=ARCADE_FONT, taille=13)
+                  couleur="#20c4cc", police=ARCADE_FONT, taille=13, largeur=180)
             texte(340, y, description,
-                  couleur="white", police=ARCADE_FONT, taille=12)
+                  couleur="white", police=ARCADE_FONT, taille=12, largeur=WINDOW_WIDTH - 410)
             y += 48
 
         texte(WINDOW_WIDTH / 2, 700, "NE LAISSE PAS LE QIX TOUCHER TON CHEMIN.",
@@ -1465,9 +1442,9 @@ class GameBoard:
         y = y1 + 135
         for title, description in items:
             texte(x1 + 90, y, title,
-                  couleur="#20c4cc", police=ARCADE_FONT, taille=14)
+                  couleur="#20c4cc", police=ARCADE_FONT, taille=14, largeur=160)
             texte(x1 + 260, y, description,
-                  couleur="white", police=ARCADE_FONT, taille=13)
+                  couleur="white", police=ARCADE_FONT, taille=13, largeur=x2 - x1 - 280)
             y += 47
 
         self._draw_button(INFO_CLOSE_BUTTON, "RETOUR AU JEU", "#ffd166")
@@ -1478,7 +1455,7 @@ class GameBoard:
                   couleur=color, remplissage="#0d1117", epaisseur=1)
         texte((x1 + x2) / 2, (y1 + y2) / 2, label,
               couleur="white", police=ARCADE_FONT,
-              ancrage="center", taille=11)
+              ancrage="center", taille=11, largeur=x2 - x1 - 12)
 
     def _draw_button(self, button, label, color, disabled=False):
         x1, y1, x2, y2 = button
@@ -1491,7 +1468,7 @@ class GameBoard:
                   couleur=border, epaisseur=1)
         texte((x1 + x2) / 2, (y1 + y2) / 2, label,
               couleur=text_color, police=ARCADE_FONT,
-              ancrage="center", taille=17)
+              ancrage="center", taille=17, largeur=x2 - x1 - 24)
 
         if disabled:
             texte(x2 - 12, y1 + 8, "BIENTOT",

@@ -3,7 +3,7 @@
 from math import cos, pi, sin
 from random import choice, random
 from time import monotonic
-from fltk import ligne
+from affichage import ligne
 
 
 DIRECTIONS = [
